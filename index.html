@@ -1,21 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>知识超市装修中</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园生存资源包 | 学长独家整理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body style="text-align: center; margin-top: 100px; font-family: sans-serif;">
-    <h1>🚧 正在装修中...</h1>
-    <p>我的知识资产超市即将开业，敬请期待！</p>
-    
-    <hr style="width: 50%; margin: 20px auto;">
-    
-    <p>在此之前，你可以访问我的其他空间：</p>
-    
-    <!-- 这里就是添加链接的地方 -->
-    <!-- 把 href 里面的网址改成你真正的个人主页或笔记地址 -->
-    <a href="https://github.com/你的用户名" style="color: blue; text-decoration: none; font-weight: bold;">
-        我的 GitHub 主页
-    </a>
+<body class="bg-gray-50 text-gray-900">
+
+    <!-- 顶部导航 -->
+    <nav class="p-6 text-center">
+        <h1 class="text-3xl font-bold text-blue-600">Campus Guide 校园指南</h1>
+    </nav>
+
+    <!-- 核心区 -->
+    <main class="max-w-4xl mx-auto p-4">
+        <!-- 主标题 -->
+        <header class="text-center my-10">
+            <h2 class="text-4xl font-extrabold mb-4">拒绝信息差，少走弯路</h2>
+            <p class="text-gray-600 text-lg">学长为你整理的保姆级生存资源，涵盖生活、学习、社团避坑全攻略。</p>
+        </header>
+
+        <!-- 售卖卡片 -->
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- 卡片 1 -->
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-blue-100 hover:scale-105 transition">
+                <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-bold">高频需求</span>
+                <h3 class="text-2xl font-bold mt-4">大一新生避坑手册</h3>
+                <p class="text-gray-500 mt-2 mb-6">全校二手攻略、宿舍生存法则、辅导员性格分析及校内隐形福利。</p>
+                <div class="text-3xl font-bold mb-6">¥ 9.9 <span class="text-sm font-normal text-gray-400">/ 永久获取</span></div>
+                <button onclick="document.getElementById('contact').scrollIntoView()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700">获取资源</button>
+            </div>
+
+            <!-- 卡片 2 -->
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-blue-100 hover:scale-105 transition">
+                <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-bold">学习必备</span>
+                <h3 class="text-2xl font-bold mt-4">考试重点/社团题库</h3>
+                <p class="text-gray-500 mt-2 mb-6">往年期末真题汇总、社团面试常见坑点，让你拿奖学金更轻松。</p>
+                <div class="text-3xl font-bold mb-6">¥ 19.9 <span class="text-sm font-normal text-gray-400">/ 永久获取</span></div>
+                <button onclick="document.getElementById('contact').scrollIntoView()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700">获取资源</button>
+            </div>
+        </div>
+
+        <!-- 底部联系区 -->
+        <div id="contact" class="mt-20 bg-white p-10 rounded-3xl text-center shadow-md">
+            <h3 class="text-2xl font-bold mb-4">如何领取？</h3>
+            <p class="mb-6">微信扫码添加学长，备注【资源包名称】，手动发送资料。</p>
+            <div class="w-40 h-40 bg-gray-200 mx-auto border-4 border-blue-500 rounded-lg flex items-center justify-center">
+                <!-- 在这里放你的微信二维码图片 -->
+                <span class="text-gray-500">放微信二维码</span>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-10 text-gray-400 text-sm">
+        © 2024 校园指南团队. All Rights Reserved.
+    </footer>
+
 </body>
 </html>
