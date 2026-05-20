@@ -1,61 +1,441 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>校园生存资源包 | 学长独家整理</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 text-gray-900">
+import random
+from abc import ABC, abstractmethod
+from typing import List, Optional, Tuple
 
-    <!-- 顶部导航 -->
-    <nav class="p-6 text-center">
-        <h1 class="text-3xl font-bold text-blue-600">Campus Guide 校园指南</h1>
-    </nav>
+# ======================== 卡牌定义 ========================
+class Card(ABC):
+    """卡牌基类"""
+    def __init__(self, name: str, cost: int, description: str):
+        self.name = name
+        self.cost = cost          # 法力消耗
+        self.description = description
 
-    <!-- 核心区 -->
-    <main class="max-w-4xl mx-auto p-4">
-        <!-- 主标题 -->
-        <header class="text-center my-10">
-            <h2 class="text-4xl font-extrabold mb-4">拒绝信息差，少走弯路</h2>
-            <p class="text-gray-600 text-lg">学长为你整理的保姆级生存资源，涵盖生活、学习、社团避坑全攻略。</p>
-        </header>
+    @abstractmethod
+    def play(self, game: 'Game', player: 'Hero', target: Optional['Hero'] = None, target_minion_index: Optional[int] = None) -> str:
+        """打出卡牌的效果，返回执行描述"""
+        pass
 
-        <!-- 售卖卡片 -->
-        <div class="grid md:grid-cols-2 gap-8">
-            <!-- 卡片 1 -->
-            <div class="bg-white p-8 rounded-2xl shadow-lg border border-blue-100 hover:scale-105 transition">
-                <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-bold">高频需求</span>
-                <h3 class="text-2xl font-bold mt-4">大一新生避坑手册</h3>
-                <p class="text-gray-500 mt-2 mb-6">全校二手攻略、宿舍生存法则、辅导员性格分析及校内隐形福利。</p>
-                <div class="text-3xl font-bold mb-6">¥ 9.9 <span class="text-sm font-normal text-gray-400">/ 永久获取</span></div>
-                <button onclick="document.getElementById('contact').scrollIntoView()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700">获取资源</button>
-            </div>
+    def __repr__(self):
+        return f"[{self.cost}费] {self.name}: {self.description}"
 
-            <!-- 卡片 2 -->
-            <div class="bg-white p-8 rounded-2xl shadow-lg border border-blue-100 hover:scale-105 transition">
-                <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-bold">学习必备</span>
-                <h3 class="text-2xl font-bold mt-4">考试重点/社团题库</h3>
-                <p class="text-gray-500 mt-2 mb-6">往年期末真题汇总、社团面试常见坑点，让你拿奖学金更轻松。</p>
-                <div class="text-3xl font-bold mb-6">¥ 19.9 <span class="text-sm font-normal text-gray-400">/ 永久获取</span></div>
-                <button onclick="document.getElementById('contact').scrollIntoView()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700">获取资源</button>
-            </div>
-        </div>
+class MinionCard(Card):
+    """随从牌"""
+    def __init__(self, name: str, cost: int, attack: int, health: int, description: str = ""):
+        super().__init__(name, cost, description if description else f"{attack}/{health}")
+        self.attack = attack
+        self.health = health
 
-        <!-- 底部联系区 -->
-        <div id="contact" class="mt-20 bg-white p-10 rounded-3xl text-center shadow-md">
-            <h3 class="text-2xl font-bold mb-4">如何领取？</h3>
-            <p class="mb-6">微信扫码添加学长，备注【资源包名称】，手动发送资料。</p>
-            <div class="w-40 h-40 bg-gray-200 mx-auto border-4 border-blue-500 rounded-lg flex items-center justify-center">
-                <!-- 在这里放你的微信二维码图片 -->
-                <span class="text-gray-500">放微信二维码</span>
-            </div>
-        </div>
-    </main>
+    def play(self, game: 'Game', player: 'Hero', target: Optional['Hero'] = None, target_minion_index: Optional[int] = None) -> str:
+        if len(player.board) >= game.MAX_BOARD_SIZE:
+            return "你的战场已满，无法召唤随从！"
+        minion = Minion(self.name, self.attack, self.health, self.cost)
+        player.board.append(minion)
+        return f"召唤随从 {self.name}({self.attack}/{self.health})"
 
-    <footer class="text-center py-10 text-gray-400 text-sm">
-        © 2024 校园指南团队. All Rights Reserved.
-    </footer>
+class SpellCard(Card):
+    """法术牌：效果为造成伤害"""
+    def __init__(self, name: str, cost: int, damage: int, target_type: str = "hero", description: str = ""):
+        """
+        target_type: "hero" => 只能以英雄为目标, "any" => 可攻击英雄或随从
+        """
+        desc = description if description else f"造成 {damage} 点伤害"
+        super().__init__(name, cost, desc)
+        self.damage = damage
+        self.target_type = target_type
 
-</body>
-</html>
+    def play(self, game: 'Game', player: 'Hero', target: Optional['Hero'] = None, target_minion_index: Optional[int] = None) -> str:
+        if self.target_type == "hero":
+            if target is None:
+                return "请选择目标英雄。"
+            target.health -= self.damage
+            return f"对英雄造成 {self.damage} 点伤害！"
+        else:
+            # 可以是英雄或随从
+            if target_minion_index is not None and target is not None:
+                # 攻击target英雄的战场随从
+                if 0 <= target_minion_index < len(target.board):
+                    minion = target.board[target_minion_index]
+                    minion.health -= self.damage
+                    res = f"对随从 {minion.name} 造成 {self.damage} 点伤害！"
+                    if minion.health <= 0:
+                        target.board.pop(target_minion_index)
+                        res += f" {minion.name} 被消灭。"
+                    return res
+                else:
+                    return "无效的随从索引。"
+            elif target is not None:
+                # 默认为英雄
+                target.health -= self.damage
+                return f"对英雄造成 {self.damage} 点伤害！"
+            else:
+                return "请指定目标。"
+
+# ======================== 游戏实体 ========================
+class Minion:
+    """战场上的随从实例"""
+    def __init__(self, name: str, attack: int, health: int, cost: int):
+        self.name = name
+        self.attack = attack
+        self.health = health
+        self.cost = cost          # 原始费用，暂未使用
+        self.attacks_this_turn = False   # 召唤当回合不能攻击
+
+    def can_attack(self):
+        return not self.attacks_this_turn and self.attack > 0
+
+    def take_damage(self, damage: int):
+        self.health -= damage
+
+    def __repr__(self):
+        return f"{self.name}({self.attack}/{self.health}){'<无法攻击>' if not self.can_attack() else ''}"
+
+class Hero:
+    """英雄类"""
+    def __init__(self, name: str, health: int = 30, deck: List[Card] = None):
+        self.name = name
+        self.health = health
+        self.max_mana = 0
+        self.current_mana = 0
+        self.deck = deck if deck else []   # 牌库（卡牌对象）
+        self.hand = []         # 手牌
+        self.board = []        # 战场随从
+        self.armor = 0         # 护甲（可扩展）
+
+    def draw_cards(self, num: int):
+        for _ in range(num):
+            if self.deck:
+                card = self.deck.pop(0)  # 从牌库顶抽牌
+                self.hand.append(card)
+                if len(self.hand) > 10:  # 手牌上限
+                    print(f"{self.name} 的手牌已满，销毁抽到的 {card.name}")
+                    self.hand.pop()  # 丢弃最后一张（刚抽到的），简化为不加入
+                    # 实际上这里直接不放进去更好，上面已加入再弹出会移除最后一张，可能不一致，
+                    # 修正：先检查是否超过9（因为还没加入），如果手牌数>=10则烧牌
+            else:
+                # 疲劳机制：每抽一张扣血
+                self.health -= (num - _)
+                break
+
+    def start_turn(self):
+        """回合开始：增加最大法力（上限10），回满法力，抽一张牌，刷新随从攻击状态"""
+        if self.max_mana < 10:
+            self.max_mana += 1
+        self.current_mana = self.max_mana
+        self.draw_cards(1)
+        for m in self.board:
+            m.attacks_this_turn = False
+
+    def __repr__(self):
+        return f"{self.name} (生命:{self.health} 法力:{self.current_mana}/{self.max_mana})"
+
+# ======================== 游戏引擎 ========================
+class Game:
+    MAX_BOARD_SIZE = 7          # 最大随从数
+    STARTING_HAND_SIZE = 3
+
+    def __init__(self, player_deck: List[Card], ai_deck: List[Card]):
+        self.player = Hero("玩家", 30, player_deck)
+        self.ai = Hero("电脑", 30, ai_deck)
+        self.turn = 0  # 0=玩家, 1=AI
+        self.game_over = False
+        self.winner = None
+        # 起手抽牌
+        for hero in [self.player, self.ai]:
+            hero.draw_cards(self.STARTING_HAND_SIZE)
+            # 先手玩家多抽一张？简化这里玩家固定为先手
+
+    def switch_turn(self):
+        self.turn = 1 - self.turn
+        current_hero = self.get_current_hero()
+        current_hero.start_turn()
+        print(f"\n===== {current_hero.name} 的回合 =====")
+
+    def get_current_hero(self) -> Hero:
+        return self.player if self.turn == 0 else self.ai
+
+    def get_opponent_hero(self) -> Hero:
+        return self.ai if self.turn == 0 else self.player
+
+    def is_game_over(self) -> bool:
+        if self.player.health <= 0:
+            self.winner = "电脑"
+            self.game_over = True
+        elif self.ai.health <= 0:
+            self.winner = "玩家"
+            self.game_over = True
+        return self.game_over
+
+    def play_card(self, hero: Hero, card_index: int):
+        if card_index < 0 or card_index >= len(hero.hand):
+            return False, "无效的卡牌序号"
+        card = hero.hand[card_index]
+        if card.cost > hero.current_mana:
+            return False, f"法力不足！需要{card.cost}点"
+        hero.current_mana -= card.cost
+        hero.hand.pop(card_index)
+        return True, card
+
+    def attack_target(self, attacker: Hero, minion_index: int, target: Hero, target_minion_index: int = -1) -> str:
+        """用attacker的随从minion_index攻击目标"""
+        if minion_index < 0 or minion_index >= len(attacker.board):
+            return "无效的己方随从索引"
+        minion = attacker.board[minion_index]
+        if not minion.can_attack():
+            return "该随从本回合无法攻击"
+
+        if target_minion_index >= 0 and target_minion_index < len(target.board):
+            # 攻击敌方随从
+            enemy_minion = target.board[target_minion_index]
+            # 交换伤害
+            enemy_minion.health -= minion.attack
+            minion.health -= enemy_minion.attack
+            res = f"{minion.name} 攻击 {enemy_minion.name}！"
+            # 检查死亡
+            if enemy_minion.health <= 0:
+                target.board.pop(target_minion_index)
+                res += f" {enemy_minion.name} 被消灭。"
+            if minion.health <= 0:
+                attacker.board.pop(minion_index)
+                res += f" {minion.name} 被消灭。"
+            minion.attacks_this_turn = True
+            return res
+        elif target_minion_index == -1:
+            # 攻击敌方英雄
+            target.health -= minion.attack
+            minion.attacks_this_turn = True
+            return f"{minion.name} 攻击英雄，造成 {minion.attack} 点伤害！"
+        else:
+            return "目标无效"
+
+    def ai_turn(self):
+        """简易AI逻辑"""
+        ai_h = self.ai
+        opp = self.player
+        print(f"\n[电脑回合] 法力:{ai_h.current_mana}/{ai_h.max_mana}")
+        # 1. 尝试打出所有可用的牌（按照费用从高到低，优先随从简单点）
+        playable = sorted(
+            [card for card in ai_h.hand if card.cost <= ai_h.current_mana],
+            key=lambda c: c.cost, reverse=True
+        )
+        for card in playable:
+            idx = ai_h.hand.index(card)  # 注意可能存在重复卡牌，但这里卡牌对象唯一，可以这样用
+            if card.cost > ai_h.current_mana:
+                continue
+            # 法术前置判定
+            if isinstance(card, SpellCard):
+                # AI 法术只打英雄
+                card.play(self, ai_h, target=opp)
+            elif isinstance(card, MinionCard):
+                card.play(self, ai_h)  # 无目标
+            ai_h.hand.remove(card)
+            ai_h.current_mana -= card.cost
+            print(f"电脑打出 {card.name}")
+        # 2. 随从攻击：优先消灭敌方随从，否则打脸
+        for idx, minion in enumerate(ai_h.board):
+            if not minion.can_attack():
+                continue
+            if ai_h.current_mana == 0:  # 随便攻击，其实不影响法力，这里只是故意用尽
+                pass
+            # 寻找可以攻击的敌方嘲讽随从（暂未实现）
+            # 简化：如果敌方战场有随从，随机攻击一个血量最低的，否则打英雄
+            if opp.board:
+                target_idx = min(range(len(opp.board)), key=lambda i: opp.board[i].health)
+                res = self.attack_target(ai_h, idx, opp, target_idx)
+                print(res)
+            else:
+                res = self.attack_target(ai_h, idx, opp, -1)
+                print(res)
+        # 回合结束
+
+    # ==================== 玩家交互 ====================
+    def player_turn(self):
+        """玩家输入循环"""
+        p = self.player
+        opp = self.ai
+        print(f"\n你的法力: {p.current_mana}/{p.max_mana}")
+        while True:
+            self.show_state()
+            action = input("\n选择行动: (1)出牌  (2)攻击  (3)结束回合：").strip()
+            if action == '1':
+                # 显示出牌选项
+                if not p.hand:
+                    print("手牌为空")
+                    continue
+                print("手牌:")
+                for i, card in enumerate(p.hand):
+                    print(f"{i}: {card}")
+                choice = input("输入要打出的卡牌编号 (b返回): ").strip()
+                if choice.lower() == 'b':
+                    continue
+                try:
+                    c_idx = int(choice)
+                except ValueError:
+                    print("错误输入")
+                    continue
+                success, card = self.play_card(p, c_idx)
+                if not success:
+                    print(card)  # 错误信息
+                    continue
+                # 执行效果
+                if isinstance(card, MinionCard):
+                    card.play(self, p)
+                    print(f"你打出了 {card.name}")
+                elif isinstance(card, SpellCard):
+                    # 法术需要选定目标
+                    if card.target_type == "hero":
+                        card.play(self, p, target=opp)
+                        print(f"你对敌方英雄使用了 {card.name}")
+                    else:
+                        print("选择法术目标: 1-敌方英雄, 2-敌方随从")
+                        t = input("输入选择: ").strip()
+                        if t == '1':
+                            card.play(self, p, target=opp)
+                            print(f"你对敌方英雄使用了 {card.name}")
+                        elif t == '2':
+                            if not opp.board:
+                                print("敌方没有随从")
+                                # 此时玩家可能想取消，但为简化直接打英雄
+                                card.play(self, p, target=opp)
+                                print(f"没有随从，自动攻击英雄")
+                            else:
+                                print("敌方随从:")
+                                for j, m in enumerate(opp.board):
+                                    print(f"{j}: {m}")
+                                tc = input("输入要攻击的随从编号: ").strip()
+                                try:
+                                    t_idx = int(tc)
+                                except:
+                                    print("无效输入，取消操作")
+                                    p.current_mana += card.cost  # 退费简化
+                                    p.hand.append(card)
+                                    continue
+                                if 0 <= t_idx < len(opp.board):
+                                    card.play(self, p, target=opp, target_minion_index=t_idx)
+                                    print(f"你对随从使用了 {card.name}")
+                                else:
+                                    print("无效编号，取消操作")
+                                    p.current_mana += card.cost
+                                    p.hand.append(card)
+                    # 执行后可能会减少生命，检查游戏结束
+                    if self.is_game_over():
+                        return
+                # 出牌后可能法力变化，重新显示
+            elif action == '2':
+                if not p.board:
+                    print("没有可以攻击的随从")
+                    continue
+                print("你的随从:")
+                for i, m in enumerate(p.board):
+                    if m.can_attack():
+                        print(f"{i}: {m}")
+                if not any(m.can_attack() for m in p.board):
+                    print("没有可以攻击的随从")
+                    continue
+                a_choice = input("选择攻击的随从编号 (b返回): ").strip()
+                if a_choice.lower() == 'b':
+                    continue
+                try:
+                    a_idx = int(a_choice)
+                except:
+                    print("无效输入")
+                    continue
+                if a_idx < 0 or a_idx >= len(p.board) or not p.board[a_idx].can_attack():
+                    print("该随从无法攻击")
+                    continue
+                print("攻击目标: 1-敌方英雄, 2-敌方随从")
+                t_choice = input("输入: ").strip()
+                if t_choice == '1':
+                    res = self.attack_target(p, a_idx, opp, -1)
+                    print(res)
+                elif t_choice == '2':
+                    if not opp.board:
+                        print("敌方没有随从")
+                        continue
+                    print("敌方随从:")
+                    for j, m in enumerate(opp.board):
+                        print(f"{j}: {m}")
+                    t_idx = input("输入目标编号: ").strip()
+                    try:
+                        t_idx = int(t_idx)
+                    except:
+                        print("无效输入")
+                        continue
+                    res = self.attack_target(p, a_idx, opp, t_idx)
+                    print(res)
+                else:
+                    print("无效选择")
+                    continue
+                if self.is_game_over():
+                    return
+            elif action == '3':
+                break
+            else:
+                print("无效输入")
+
+    def show_state(self):
+        p = self.player
+        ai = self.ai
+        print(f"\n--- 你的英雄: {p.name} 生命:{p.health} ---")
+        print(f"你的战场: {p.board if p.board else '空'}")
+        print(f"--- 电脑英雄: {ai.name} 生命:{ai.health} ---")
+        print(f"电脑战场: {ai.board if ai.board else '空'}")
+
+    def run(self):
+        """游戏主循环"""
+        print("===== 卡牌对决开始！ =====")
+        self.player.start_turn()  # 先手玩家回合开始
+        while not self.game_over:
+            current = self.get_current_hero()
+            if self.turn == 0:
+                self.player_turn()
+            else:
+                self.ai_turn()
+            if self.is_game_over():
+                break
+            self.switch_turn()
+        print(f"\n游戏结束！{self.winner} 获得胜利！")
+        if self.winner == "玩家":
+            print("Congratulations!")
+        else:
+            print("再接再厉！")
+
+# ======================== 构建卡组 ========================
+def build_deck() -> List[Card]:
+    """生成一副基本的卡组，包含随从和法术"""
+    deck = []
+    # 基本随从
+    deck.append(MinionCard("持盾步兵", 1, 1, 3))
+    deck.append(MinionCard("持盾步兵", 1, 1, 3))
+    deck.append(MinionCard("血沼迅猛龙", 2, 3, 2))
+    deck.append(MinionCard("血沼迅猛龙", 2, 3, 2))
+    deck.append(MinionCard("石拳食人魔", 3, 2, 4))
+    deck.append(MinionCard("石拳食人魔", 3, 2, 4))
+    deck.append(MinionCard("暴风城骑士", 4, 2, 5))
+    deck.append(MinionCard("暴风城骑士", 4, 2, 5))
+    deck.append(MinionCard("鲁莽火箭兵", 5, 6, 2))
+    deck.append(MinionCard("鲁莽火箭兵", 5, 6, 2))
+    deck.append(MinionCard("冰风雪人", 6, 6, 6))
+    deck.append(MinionCard("冰风雪人", 6, 6, 6))
+    # 法术
+    deck.append(SpellCard("奥术飞弹", 1, 2, target_type="any"))
+    deck.append(SpellCard("奥术飞弹", 1, 2, target_type="any"))
+    deck.append(SpellCard("火球术", 4, 6, target_type="any"))
+    deck.append(SpellCard("火球术", 4, 6, target_type="any"))
+    deck.append(SpellCard("炎爆术", 8, 12, target_type="hero"))
+    # 确保30张，再随便添一些
+    deck.append(MinionCard("血爪巨龙", 7, 7, 7))
+    deck.append(MinionCard("血爪巨龙", 7, 7, 7))
+    deck.append(MinionCard("土狼前锋", 1, 2, 1))
+    deck.append(MinionCard("土狼前锋", 1, 2, 1))
+    deck.append(MinionCard("腐肉食尸鬼", 3, 3, 3))
+    deck.append(MinionCard("腐肉食尸鬼", 3, 3, 3))
+    # 随机打乱
+    random.shuffle(deck)
+    return deck
+
+if __name__ == "__main__":
+    # 为玩家和AI各创建一副牌库（可以相同）
+    player_deck = build_deck()
+    ai_deck = build_deck()
+    game = Game(player_deck, ai_deck)
+    game.run()
